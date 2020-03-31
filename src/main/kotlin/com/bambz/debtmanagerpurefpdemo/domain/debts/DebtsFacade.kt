@@ -9,25 +9,30 @@ import com.bambz.debtmanagerpurefpdemo.domain.kernel.TimeService
 import com.bambz.debtmanagerpurefpdemo.domain.kernel.merge
 import io.vavr.control.Either
 import io.vavr.control.Try
+import reactor.core.publisher.Mono
 import java.math.BigDecimal
 
 class DebtsFacade(private val debtsRepository: DebtsRepository, private val timeService: TimeService) {
 
-    fun addDebt(ctxId: String, form: NewDebtValueForm): MonoEither<Debtor> {
+    fun addDebtor(debtorId: String): Mono<Debtor> {
+        return debtsRepository.save(Debtor.new(debtorId))
+    }
+
+    fun addChange(ctxId: String, form: NewDebtValueForm): MonoEither<Debtor> {
         return form.debtorId?.let { debtorId ->
-            mapStringToMonoEither(debtorId, ctxId, form)
+            addChange(debtorId, ctxId, form)
         } ?: BadFormRequestError.toMono()
     }
 
-    private fun mapStringToMonoEither(debtorId: String, ctxId: String, form: NewDebtValueForm): MonoEither<Debtor> {
+    private fun addChange(debtorId: String, ctxId: String, form: NewDebtValueForm): MonoEither<Debtor> {
         return debtsRepository.findById(debtorId).flatMap {
-            mapDebtorToAttempt(it, ctxId, form)
+            createAndSave(it, ctxId, form)
         }
     }
 
-    private fun mapDebtorToAttempt(debtor: Debtor, ctxId: String, form: NewDebtValueForm): MonoEither<Debtor> {
+    private fun createAndSave(debtor: Debtor, ctxId: String, form: NewDebtValueForm): MonoEither<Debtor> {
         return tryCreateValidNewDebtValue(ctxId, form).map { newDebtValue ->
-            debtsRepository.save(debtor.add(newDebtValue))
+            debtsRepository.save(debtor.addChange(newDebtValue))
                     .map { Either.right<AppError, Debtor>(it) }
         }
                 .mapLeft { it.toMono<Debtor>() }
@@ -42,5 +47,4 @@ class DebtsFacade(private val debtsRepository: DebtsRepository, private val time
                     .toEither<AppError>(BadFormRequestError)
         } ?: BadFormRequestError.toEither()
     }
-
 }

@@ -2,6 +2,7 @@ package com.bambz.debtmanagerpurefpdemo.domain.users
 
 import com.bambz.debtmanagerpurefpdemo.TestUtils.assertMonoEitherLeft
 import com.bambz.debtmanagerpurefpdemo.TestUtils.assertMonoEitherRight
+import com.bambz.debtmanagerpurefpdemo.domain.debts.DebtsModule
 import com.bambz.debtmanagerpurefpdemo.domain.errors.UnauthorizedError
 import com.bambz.debtmanagerpurefpdemo.domain.errors.UserExistError
 import com.bambz.debtmanagerpurefpdemo.domain.users.api.LoginUserDto
@@ -17,7 +18,8 @@ class UsersFacadeTest {
 
     @BeforeEach
     fun setup() {
-        facade = UsersModule().createInMemoryFacade()
+        val debtsInMemoryFacade = DebtsModule().createInMemoryFacade()
+        facade = UsersModule().createInMemoryFacade(debtsInMemoryFacade)
     }
 
     @Test

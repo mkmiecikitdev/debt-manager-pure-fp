@@ -1,5 +1,6 @@
 package com.bambz.debtmanagerpurefpdemo.domain.users
 
+import com.bambz.debtmanagerpurefpdemo.domain.debts.DebtsFacade
 import com.bambz.debtmanagerpurefpdemo.domain.errors.*
 import com.bambz.debtmanagerpurefpdemo.domain.kernel.MonoEither
 import com.bambz.debtmanagerpurefpdemo.domain.users.api.LoginUserDto
@@ -10,14 +11,18 @@ import io.vavr.collection.Set
 import io.vavr.control.Either
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 
-class UsersFacade(private val userRepository: UsersRepository) {
+class UsersFacade(private val userRepository: UsersRepository, private val debtsFacade: DebtsFacade) {
 
     fun addAdmin(userFormDto: NewUserDto): MonoEither<UserDto> {
         return addUser(userFormDto, HashSet.of(Role.USER, Role.ADMIN))
     }
 
     fun addUser(userFormDto: NewUserDto): MonoEither<UserDto> {
-        return addUser(userFormDto, HashSet.of(Role.USER))
+        return addUser(userFormDto, HashSet.of(Role.USER)).map {
+            it.onEach { userDto ->
+                debtsFacade.addDebtor(userDto.email)
+            }
+        }
     }
 
     fun login(loginUserDto: LoginUserDto): MonoEither<UserDto> {
@@ -64,10 +69,10 @@ class UsersFacade(private val userRepository: UsersRepository) {
         return newUser.email?.let { email ->
             newUser.password?.let { pass ->
                 newUser.confirmPassword?.let { confirmPass ->
-                    if(confirmPass != pass) {
+                    if (confirmPass != pass) {
                         DifferentPasswordsError
                     }
-                        action(email, pass)
+                    action(email, pass)
                 }
             }
         } ?: BadFormRequestError.toMono()

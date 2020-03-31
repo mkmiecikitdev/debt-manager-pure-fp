@@ -15,15 +15,15 @@ import reactor.core.publisher.Mono
 class DebtsHandler(private val debtsFacade: DebtsFacade, private val securityWrapper: SecurityWrapper, private val serverResponseCreator: ServerResponseCreator) {
 
     fun routes() = router {
-        "/debts".nest {
-            POST("/add", this@DebtsHandler::addDebt)
+        "/debtors/change/".nest {
+            POST("/add", this@DebtsHandler::addChange)
         }
     }
 
-    private fun addDebt(req: ServerRequest): Mono<ServerResponse> {
+    private fun addChange(req: ServerRequest): Mono<ServerResponse> {
         return securityWrapper.secure(req, HashSet.of(Role.USER)) { request, userData ->
             request.bodyToMono<NewDebtValueForm>().flatMap {
-                serverResponseCreator.fromMonoEither { debtsFacade.addDebt(userData.email, it) }
+                serverResponseCreator.fromMonoEither { debtsFacade.addChange(userData.email, it) }
             }
         }
     }
