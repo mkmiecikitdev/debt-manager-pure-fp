@@ -23,17 +23,19 @@ class SecurityWrapper(private val jwtService: JwtService) {
                 }.getOrElse { unauthorized() }
     }
 
-    private fun hasRoles(inPayload: Set<Role>, roles: Set<Role>): Boolean {
-        return inPayload.containsAll(roles)
+    private fun hasRoles(rolesInPayload: Set<Role>, roles: Set<Role>): Boolean {
+        return rolesInPayload.containsAll(roles)
     }
 
     private fun unauthorized(): Mono<ServerResponse> {
-        return ServerResponse.status(resolveStatus(UnauthorizedError)).bodyValue(UnauthorizedError)
+        return ServerResponse
+                .status(resolveStatus(UnauthorizedError))
+                .bodyValue(UnauthorizedError)
     }
 
     private fun resolveStatus(appError: AppError): HttpStatus {
         return when (appError) {
-            is UnknownError -> HttpStatus.UNAUTHORIZED
+            is UnauthorizedError -> HttpStatus.UNAUTHORIZED
             else -> HttpStatus.BAD_REQUEST
         }
     }

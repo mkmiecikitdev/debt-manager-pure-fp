@@ -13,6 +13,7 @@ data class UserExistError(val email: String): AppError()
 object UnauthorizedError: AppError()
 data class IncorrectAmountError(val amount: BigDecimal, override val message: String = "Incorrect amount"): AppError()
 object BadFormRequestError: AppError()
+object DifferentPasswordsError: AppError()
 
 
 

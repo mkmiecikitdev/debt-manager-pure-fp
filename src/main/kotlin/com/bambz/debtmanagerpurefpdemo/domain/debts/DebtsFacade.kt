@@ -1,78 +1,46 @@
 package com.bambz.debtmanagerpurefpdemo.domain.debts
 
-import com.bambz.debtmanagerpurefpdemo.domain.debts.api.AddDebtDto
-import com.bambz.debtmanagerpurefpdemo.domain.debts.api.ClearDebtDto
-import com.bambz.debtmanagerpurefpdemo.domain.debts.api.DebtsDto
-import com.bambz.debtmanagerpurefpdemo.domain.debts.api.MinusDebtDto
+import com.bambz.debtmanagerpurefpdemo.domain.debts.api.NewDebtValueForm
 import com.bambz.debtmanagerpurefpdemo.domain.errors.AppError
 import com.bambz.debtmanagerpurefpdemo.domain.errors.BadFormRequestError
+import com.bambz.debtmanagerpurefpdemo.domain.kernel.Attempt
 import com.bambz.debtmanagerpurefpdemo.domain.kernel.MonoEither
 import com.bambz.debtmanagerpurefpdemo.domain.kernel.TimeService
 import com.bambz.debtmanagerpurefpdemo.domain.kernel.merge
-import io.vavr.collection.HashMap
 import io.vavr.control.Either
-import reactor.core.publisher.Mono
+import io.vavr.control.Try
 import java.math.BigDecimal
 
 class DebtsFacade(private val debtsRepository: DebtsRepository, private val timeService: TimeService) {
 
-    fun addDebt(contextUserId: String, addDebtDto: AddDebtDto): MonoEither<DebtsDto> {
-        if (addDebtDto.amount == null || addDebtDto.userId == null) {
-            return BadFormRequestError.toMono()
-        }
-
-        return getDebtsOrNew(addDebtDto.userId).flatMap { debts ->
-            debts.add(contextUserId, BigDecimal(addDebtDto.amount), timeService.now())
-                    .map { updatedDebts -> saveToEither(updatedDebts) }
-                    .mapLeft { it.toMono<DebtsDto>() }
-                    .merge()
-        }
+    fun addDebt(ctxId: String, form: NewDebtValueForm): MonoEither<Debtor> {
+        return form.debtorId?.let { debtorId ->
+            mapStringToMonoEither(debtorId, ctxId, form)
+        } ?: BadFormRequestError.toMono()
     }
 
-    fun minusDebt(contextUserId: String, minusDebtDto: MinusDebtDto): MonoEither<DebtsDto> {
-        if (minusDebtDto.amount == null || minusDebtDto.userId == null) {
-            return BadFormRequestError.toMono()
-        }
-
-        return getDebtsOrNew(minusDebtDto.userId).flatMap { debts ->
-            debts.minus(contextUserId, BigDecimal(minusDebtDto.amount), timeService.now())
-                    .map { updatedDebts -> saveToEither(updatedDebts) }
-                    .mapLeft { it.toMono<DebtsDto>() }
-                    .merge()
+    private fun mapStringToMonoEither(debtorId: String, ctxId: String, form: NewDebtValueForm): MonoEither<Debtor> {
+        return debtsRepository.findById(debtorId).flatMap {
+            mapDebtorToAttempt(it, ctxId, form)
         }
     }
 
-    fun clearDebt(clearDebtDto: ClearDebtDto): MonoEither<DebtsDto> {
-        if (clearDebtDto.userId == null || clearDebtDto.fromUser == null) {
-            return BadFormRequestError.toMono()
+    private fun mapDebtorToAttempt(debtor: Debtor, ctxId: String, form: NewDebtValueForm): MonoEither<Debtor> {
+        return tryCreateValidNewDebtValue(ctxId, form).map { newDebtValue ->
+            debtsRepository.save(debtor.add(newDebtValue))
+                    .map { Either.right<AppError, Debtor>(it) }
         }
-
-        return getDebtsOrNew(clearDebtDto.userId).flatMap { debts ->
-            debts.clear(clearDebtDto.fromUser)
-                    .let { updatedDebts -> saveToEither(updatedDebts) }
-        }
+                .mapLeft { it.toMono<Debtor>() }
+                .merge()
     }
 
-    private fun getDebtsOrNew(userId: String): Mono<Debts> {
-        return debtsRepository.findByUser(userId)
-                .defaultIfEmpty(newDebts(userId))
+    private fun tryCreateValidNewDebtValue(ctxId: String, form: NewDebtValueForm): Attempt<NewDebtValue> {
+        return form.amount?.let { amount ->
+            Try.of {
+                NewDebtValue(debtorId = ctxId, now = timeService.now(), value = BigDecimal(amount))
+            }
+                    .toEither<AppError>(BadFormRequestError)
+        } ?: BadFormRequestError.toEither()
     }
-
-    private fun newDebts(userId: String): Debts {
-        return Debts(userId, HashMap.empty())
-    }
-
-    private fun saveToEither(debts: Debts): MonoEither<DebtsDto> {
-        return debtsRepository.save(debts)
-                .map {
-                    Either.right<AppError, DebtsDto>(it.toDto())
-                }
-    }
-
-    private fun save(debts: Debts): Mono<DebtsDto> {
-        return debtsRepository.save(debts)
-                .map { it.toDto() }
-    }
-
 
 }

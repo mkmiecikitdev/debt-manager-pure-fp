@@ -5,7 +5,9 @@ import io.vavr.collection.List
 import io.vavr.control.Either
 import reactor.core.publisher.Mono
 
-typealias MonoEither<T> = Mono<Either<AppError, T>>
+typealias Attempt<T> = Either<AppError, T>
+
+typealias MonoEither<T> = Mono<Attempt<T>>
 
 typealias MonoList<T> = Mono<List<T>>
 

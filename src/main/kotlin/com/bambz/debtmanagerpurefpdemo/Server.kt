@@ -19,7 +19,10 @@ import java.util.function.BiFunction
 class Server {
 
     fun start(app: App) {
-        val objectMapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule()).registerModule(VavrModule())
+        val objectMapper: ObjectMapper = ObjectMapper()
+                .registerModule(KotlinModule())
+                .registerModule(VavrModule())
+
         val jwtService = JwtService(objectMapper)
         val securityWrapper = SecurityWrapper(jwtService)
         val serverResponseCreator = ServerResponseCreator(objectMapper, jwtService)

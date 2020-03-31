@@ -4,8 +4,8 @@ import reactor.core.publisher.Mono
 
 interface DebtsRepository {
 
-    fun findByUser(userId: String): Mono<Debts>
+    fun findById(id: String): Mono<Debtor>
 
-    fun save(debts: Debts): Mono<Debts>
+    fun save(debtor: Debtor): Mono<Debtor>
 
 }

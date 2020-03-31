@@ -1,9 +1,8 @@
 package com.bambz.debtmanagerpurefpdemo.domain.users
 
-import com.bambz.debtmanagerpurefpdemo.domain.errors.AppError
-import com.bambz.debtmanagerpurefpdemo.domain.errors.UnauthorizedError
-import com.bambz.debtmanagerpurefpdemo.domain.errors.UserExistError
+import com.bambz.debtmanagerpurefpdemo.domain.errors.*
 import com.bambz.debtmanagerpurefpdemo.domain.kernel.MonoEither
+import com.bambz.debtmanagerpurefpdemo.domain.users.api.LoginUserDto
 import com.bambz.debtmanagerpurefpdemo.domain.users.api.NewUserDto
 import com.bambz.debtmanagerpurefpdemo.domain.users.api.UserDto
 import io.vavr.collection.HashSet
@@ -21,19 +20,19 @@ class UsersFacade(private val userRepository: UsersRepository) {
         return addUser(userFormDto, HashSet.of(Role.USER))
     }
 
-    fun login(userFormDto: NewUserDto): MonoEither<UserDto> {
-        return wrapUserCredentials(userFormDto) { email, pass ->
+    fun login(loginUserDto: LoginUserDto): MonoEither<UserDto> {
+        return checkUserLoginForm(loginUserDto) { email, pass ->
             userRepository.findByEmail(email)
                     .map {
                         return@map if (it.equalsHashedPass(pass)) Either.right(it.toDto())
                         else UnauthorizedError.toEither<UserDto>()
                     }
-                    .switchIfEmpty(UnauthorizedError.toMono<UserDto>())
+                    .switchIfEmpty(UnauthorizedError.toMono())
         }
     }
 
     private fun addUser(userFormDto: NewUserDto, roles: Set<Role>): MonoEither<UserDto> {
-        return wrapUserCredentials(userFormDto) { email, pass ->
+        return checkUserRegisterForm(userFormDto) { email, pass ->
             userRepository.findByEmail(email).map {
                 UserExistError(email).toEither<UserDto>()
             }.switchIfEmpty(
@@ -53,11 +52,24 @@ class UsersFacade(private val userRepository: UsersRepository) {
         )
     }
 
-    private fun wrapUserCredentials(newUser: NewUserDto, action: (String, String) -> MonoEither<UserDto>): MonoEither<UserDto> {
-        return newUser.email?.let { email ->
-            newUser.password?.let { pass ->
+    private fun checkUserLoginForm(loginUser: LoginUserDto, action: (String, String) -> MonoEither<UserDto>): MonoEither<UserDto> {
+        return loginUser.email?.let { email ->
+            loginUser.password?.let { pass ->
                 action(email, pass)
             }
         } ?: UnauthorizedError.toMono()
+    }
+
+    private fun checkUserRegisterForm(newUser: NewUserDto, action: (String, String) -> MonoEither<UserDto>): MonoEither<UserDto> {
+        return newUser.email?.let { email ->
+            newUser.password?.let { pass ->
+                newUser.confirmPassword?.let { confirmPass ->
+                    if(confirmPass != pass) {
+                        DifferentPasswordsError
+                    }
+                        action(email, pass)
+                }
+            }
+        } ?: BadFormRequestError.toMono()
     }
 }

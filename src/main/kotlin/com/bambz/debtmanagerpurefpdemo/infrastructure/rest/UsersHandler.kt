@@ -1,6 +1,7 @@
 package com.bambz.debtmanagerpurefpdemo.infrastructure.rest
 
 import com.bambz.debtmanagerpurefpdemo.domain.users.UsersFacade
+import com.bambz.debtmanagerpurefpdemo.domain.users.api.LoginUserDto
 import com.bambz.debtmanagerpurefpdemo.domain.users.api.NewUserDto
 import com.bambz.debtmanagerpurefpdemo.infrastructure.rest.helpers.ServerResponseCreator
 import org.springframework.web.reactive.function.server.ServerRequest
@@ -32,7 +33,7 @@ class UsersHandler(private val usersFacade: UsersFacade, private val serverRespo
     }
 
     private fun login(req: ServerRequest): Mono<ServerResponse> {
-        return req.bodyToMono<NewUserDto>().flatMap {
+        return req.bodyToMono<LoginUserDto>().flatMap {
             serverResponseCreator.fromUserData { usersFacade.login(it) }
         }
     }

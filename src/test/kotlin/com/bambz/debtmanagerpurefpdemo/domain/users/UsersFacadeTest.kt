@@ -4,6 +4,7 @@ import com.bambz.debtmanagerpurefpdemo.TestUtils.assertMonoEitherLeft
 import com.bambz.debtmanagerpurefpdemo.TestUtils.assertMonoEitherRight
 import com.bambz.debtmanagerpurefpdemo.domain.errors.UnauthorizedError
 import com.bambz.debtmanagerpurefpdemo.domain.errors.UserExistError
+import com.bambz.debtmanagerpurefpdemo.domain.users.api.LoginUserDto
 import com.bambz.debtmanagerpurefpdemo.domain.users.api.NewUserDto
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -22,7 +23,7 @@ class UsersFacadeTest {
     @Test
     fun shouldAddCustomer() {
         // given
-        val form = NewUserDto(email = "user1", password = "pass")
+        val form = NewUserDto(email = "user1", password = "pass", confirmPassword = "pass")
 
         // when
         val result = facade.addUser(form)
@@ -38,7 +39,7 @@ class UsersFacadeTest {
     @Test
     fun shouldAddOwner() {
         // given
-        val form = NewUserDto(email = "user1", password = "pass")
+        val form = NewUserDto(email = "user1", password = "pass", confirmPassword = "pass")
 
         // when
         val result = facade.addAdmin(form)
@@ -54,7 +55,7 @@ class UsersFacadeTest {
     @Test
     fun shouldReturnUserExistsError() {
         // given
-        val form = NewUserDto(email = "user1", password = "pass")
+        val form = NewUserDto(email = "user1", password = "pass", confirmPassword = "pass")
         facade.addUser(form).block()
 
         // when
@@ -69,11 +70,11 @@ class UsersFacadeTest {
     @Test
     fun shouldSuccessLogin() {
         // given
-        val form = NewUserDto(email = "user1", password = "pass")
+        val form = NewUserDto(email = "user1", password = "pass", confirmPassword = "pass")
         facade.addAdmin(form).block()
 
         // when
-        val result = facade.login(form)
+        val result = facade.login(LoginUserDto(email = "user1", password = "pass"))
 
         // then
         assertMonoEitherRight(result) {
@@ -87,8 +88,8 @@ class UsersFacadeTest {
     @Test
     fun shouldReturnUnauthorizedIfLoginInvalid() {
         // given
-        val form = NewUserDto(email = "user1", password = "pass")
-        val invalidLoginForm = NewUserDto(email = "XXX", password = "pass")
+        val form = NewUserDto(email = "user1", password = "pass", confirmPassword = "pass")
+        val invalidLoginForm = LoginUserDto(email = "XXX", password = "pass")
         facade.addAdmin(form).block()
 
         // when
@@ -103,8 +104,8 @@ class UsersFacadeTest {
     @Test
     fun shouldReturnUnauthorizedIfPasswordInvalid() {
         // given
-        val form = NewUserDto(email = "user1", password = "pass")
-        val invalidLoginForm = NewUserDto(email = "user1", password = "XXX")
+        val form = NewUserDto(email = "user1", password = "pass", confirmPassword = "pass")
+        val invalidLoginForm = LoginUserDto(email = "user1", password = "XXX")
         facade.addAdmin(form).block()
 
         // when
